@@ -1,3 +1,5 @@
+local parser = require("../lua/file_location_parser")
+
 local tests = {
 	{ input = [[foo:11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
 	{ input = [[foo:11:111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
@@ -75,80 +77,6 @@ function dump(o)
 	end
 end
 
-local function parse_path(str)
-	local path_loc_seperators = "[:#@,%s(]"
-	local line_col_seperators = "[:.,%s]+"
-
-	local line_patterns = { "(%d+)" }
-	local line_col_patterns = {
-		"(%d+)" .. line_col_seperators .. "(%d+)",
-		"line (%d+), col (%d+)",
-		"line (%d+),? column (%d+)",
-		"line (%d+),? character (%d+)",
-	}
-	local line_col_end_col_patterns =
-		{ "(%d+)" .. line_col_seperators .. "(%d+)-(%d+)", "line (%d+),? characters (%d+)-(%d+)" }
-	local line_col_end_line_end_col_patterns = { "(%d+)%.(%d+)-(%d+)%.(%d+)", "(%d+):(%d+)-(%d+)%.(%d+)" }
-	local line_end_line_patterns = { "lines (%d+)-(%d+)" }
-	local line_end_line_col_end_col_patterns = { "lines (%d+)-(%d+), characters (%d+)-(%d+)" }
-
-	for _, pat in ipairs(line_col_end_line_end_col_patterns) do
-		local line, col, end_line, end_col = string.match(str, path_loc_seperators .. pat)
-		if line and col and end_line and end_col then
-			return {
-				line = tonumber(line),
-				col = tonumber(col),
-				end_col = tonumber(end_col),
-				end_line = tonumber(end_line),
-				pattern = pat,
-			}
-		end
-	end
-
-	for _, pat in ipairs(line_end_line_col_end_col_patterns) do
-		local line, end_line, col, end_col = string.match(str, path_loc_seperators .. pat)
-		if line and col and end_line and end_col then
-			return {
-				line = tonumber(line),
-				col = tonumber(col),
-				end_col = tonumber(end_col),
-				end_line = tonumber(end_line),
-				pattern = pat,
-			}
-		end
-	end
-
-	for _, pat in ipairs(line_col_end_col_patterns) do
-		local line, col, end_col = string.match(str, path_loc_seperators .. pat)
-		if line and col and end_col then
-			return { line = tonumber(line), col = tonumber(col), end_col = tonumber(end_col), pattern = pat }
-		end
-	end
-
-	for _, pat in ipairs(line_end_line_patterns) do
-		local line, end_line = string.match(str, path_loc_seperators .. pat)
-		if line and end_line then
-			return { line = tonumber(line), end_line = tonumber(end_line), pattern = pat }
-		end
-	end
-
-	for _, pat in ipairs(line_col_patterns) do
-		local line, col = string.match(str, path_loc_seperators .. pat)
-		if line and col then
-			return { line = tonumber(line), col = tonumber(col), pattern = pat }
-		end
-	end
-
-	for _, pat in ipairs(line_patterns) do
-		local line = string.match(str, path_loc_seperators .. pat)
-		if line then
-			return { line = tonumber(line), pattern = pat }
-		end
-	end
-
-	return {}
-end
-
 local function test_assertion(key, result, test)
 	assert(
 		result[key] == test[key],
@@ -167,7 +95,7 @@ local function test_assertion(key, result, test)
 end
 
 for _, test in ipairs(tests) do
-	local result = parse_path(test.input)
+	local result = parser.parse_file_location(test.input)
 	test_assertion("line", result, test)
 	test_assertion("end_line", result, test)
 	test_assertion("col", result, test)
