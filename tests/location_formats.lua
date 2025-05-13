@@ -1,65 +1,107 @@
 local parser = require("../lua/file_location_parser")
 
 local tests = {
-	{ input = [[foo:11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [[foo:11:111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo:11:111-222]], path = "foo", line = 11, end_line = nil, col = 111, end_col = 222 },
-	{ input = [[foo:11:111-22.222]], path = "foo", line = 11, end_line = 22, col = 111, end_col = 222 },
-	{ input = [[foo:11.111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo 11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [[foo 11:111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo 11.111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo#11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [[foo#11:111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo#11.111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo, 11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [["foo",11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [["foo",11:111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo",11.111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo",11.111-222]], path = "foo", line = 11, end_line = nil, col = 111, end_col = 222 },
-	{ input = [["foo",11.111-22.222]], path = "foo", line = 11, end_line = 22, col = 111, end_col = 222 },
-	{ input = [["foo", line 11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [["foo", line 11, col 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo", line 11, column 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo":line 11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [["foo":line 11, col 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo":line 11, column 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo": line 11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [["foo": line 11, col 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo": line 11, column 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo" on line 11]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [["foo" on line 11, col 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo" on line 11, column 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo" line 11 column 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [["foo", line 11, character 111]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua:11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [[foo.lua:11:111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua:11:111-222]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = 222 },
+	{ input = [[foo.lua:11:111-22.222]], path = "foo.lua", line = 11, end_line = 22, col = 111, end_col = 222 },
+	{ input = [[foo.lua:11.111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua 11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [[foo.lua 11:111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua 11.111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua#11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [[foo.lua#11:111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua#11.111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua, 11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [["foo.lua",11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [["foo.lua",11:111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [["foo.lua",11.111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [["foo.lua",11.111-222]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = 222 },
+	{ input = [["foo.lua",11.111-22.222]], path = "foo.lua", line = 11, end_line = 22, col = 111, end_col = 222 },
+	{ input = [["foo.lua", line 11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [["foo.lua", line 11, col 111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
 	{
-		input = [["foo", line 11, characters 111-222]],
-		path = "foo",
+		input = [["foo.lua", line 11, column 111]],
+		path = "foo.lua",
+		line = 11,
+		end_line = nil,
+		col = 111,
+		end_col = nil,
+	},
+	{ input = [["foo.lua":line 11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [["foo.lua":line 11, col 111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{
+		input = [["foo.lua":line 11, column 111]],
+		path = "foo.lua",
+		line = 11,
+		end_line = nil,
+		col = 111,
+		end_col = nil,
+	},
+	{ input = [["foo.lua": line 11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [["foo.lua": line 11, col 111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{
+		input = [["foo.lua": line 11, column 111]],
+		path = "foo.lua",
+		line = 11,
+		end_line = nil,
+		col = 111,
+		end_col = nil,
+	},
+	{ input = [["foo.lua" on line 11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{
+		input = [["foo.lua" on line 11, col 111]],
+		path = "foo.lua",
+		line = 11,
+		end_line = nil,
+		col = 111,
+		end_col = nil,
+	},
+	{
+		input = [["foo.lua" on line 11, column 111]],
+		path = "foo.lua",
+		line = 11,
+		end_line = nil,
+		col = 111,
+		end_col = nil,
+	},
+	{ input = [["foo.lua" line 11 column 111]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{
+		input = [["foo.lua", line 11, character 111]],
+		path = "foo.lua",
+		line = 11,
+		end_line = nil,
+		col = 111,
+		end_col = nil,
+	},
+	{
+		input = [["foo.lua", line 11, characters 111-222]],
+		path = "foo.lua",
 		line = 11,
 		end_line = nil,
 		col = 111,
 		end_col = 222,
 	},
-	{ input = [["foo", lines 11-22]], path = "foo", line = 11, end_line = 22, col = nil, end_col = nil },
+	{ input = [["foo.lua", lines 11-22]], path = "foo.lua", line = 11, end_line = 22, col = nil, end_col = nil },
 	{
-		input = [["foo", lines 11-22, characters 111-222]],
-		path = "foo",
+		input = [["foo.lua", lines 11-22, characters 111-222]],
+		path = "foo.lua",
 		line = 11,
 		end_line = 22,
 		col = 111,
 		end_col = 222,
 	},
-	{ input = [[foo(11)]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [[foo(11,111)]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo(11, 111)]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo (11)]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [[foo (11,111)]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo (11, 111)]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo: (11)]], path = "foo", line = 11, end_line = nil, col = nil, end_col = nil },
-	{ input = [[foo: (11,111)]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo: (11, 111)]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo(11:111)]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
-	{ input = [[foo (11:111)]], path = "foo", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua(11)]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [[foo.lua(11,111)]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua(11, 111)]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua (11)]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [[foo.lua (11,111)]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua (11, 111)]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua: (11)]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },
+	{ input = [[foo.lua: (11,111)]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua: (11, 111)]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua(11:111)]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
+	{ input = [[foo.lua (11:111)]], path = "foo.lua", line = 11, end_line = nil, col = 111, end_col = nil },
 }
 
 function dump(o)
@@ -77,27 +119,34 @@ function dump(o)
 	end
 end
 
-local function test_assertion(key, result, test)
-	assert(
-		result[key] == test[key],
-		key
-			.. ' does not match for "'
-			.. test.input
-			.. '". Expected: '
-			.. (test[key] or "nil")
-			.. " Actual: "
-			.. (result.line or "nil")
-			.. " Full: "
-			.. dump(result)
-	)
+local function test_assertion(result, test)
+	for _, key in ipairs({ "line", "col", "end_line", "end_col" }) do
+		assert(
+			result[key] == test[key],
+			key
+				.. ' does not match for "'
+				.. test.input
+				.. '". Expected: '
+				.. (test[key] or "nil")
+				.. " Actual: "
+				.. (result.line or "nil")
+				.. " Full: "
+				.. dump(result)
+		)
+	end
 
-	print("PASSED " .. key .. " for " .. "`" .. test.input .. "`")
+	print("PASSED " .. test.input)
 end
 
 for _, test in ipairs(tests) do
 	local result = parser.parse_file_location(test.input)
-	test_assertion("line", result, test)
-	test_assertion("end_line", result, test)
-	test_assertion("col", result, test)
-	test_assertion("end_col", result, test)
+	test_assertion(result, test)
+
+	if test.input:match([["]]) then
+		test.input = test.input:gsub([["]], "")
+		test_assertion(result, test)
+	elseif test.input:match("%(") then
+		test.input = test.input:gsub("%(", "["):gsub("%)", "]")
+		test_assertion(result, test)
+	end
 end

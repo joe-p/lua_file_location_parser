@@ -1,6 +1,6 @@
 local M = {}
 
-local path_loc_seperators = "[:#@,%s(]"
+local path_loc_seperators = "[:#@,%s(%[]"
 local line_col_seperators = "[:.,%s]+"
 
 local line_patterns = { "(%d+)" }
