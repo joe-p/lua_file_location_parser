@@ -102,12 +102,38 @@ M.get_nearest_path = function()
 	-- Restore cursor position
 	vim.api.nvim_win_set_cursor(0, { line_num, saved_col })
 
-	local suffix = line:sub(col + #raw_cfile_path, #line)
-	vim.notify(suffix)
+	if nearest_path ~= nil then
+		local suffix = line:sub(col + #raw_cfile_path + 1, #line)
+		return { path = nearest_path, suffix = suffix }
+	end
 
-	return { path = nearest_path, line_num = line_num, col = col, suffix = suffix }
+	return nil
 end
 
-M.get_nearest_path_and_location = function() end
+M.get_nearest_path_and_location = function()
+	local path_info = M.get_nearest_path()
+
+	if path_info == nil then
+		return nil
+	end
+
+	local location = M.parse_file_location(path_info.suffix)
+
+	return { path = path_info.path, location = location }
+end
+
+M.go_to_nearest_path_and_location = function()
+	local info = M.get_nearest_path_and_location()
+
+	if info == nil then
+		return
+	end
+
+	vim.api.nvim_command("edit " .. info.path)
+
+	if info.location.line ~= nil then
+		vim.api.nvim_win_set_cursor(0, { info.location.line, info.location.col or 0 })
+	end
+end
 
 return M
