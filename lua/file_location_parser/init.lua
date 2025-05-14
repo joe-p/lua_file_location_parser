@@ -74,4 +74,33 @@ M.parse_file_location = function(str)
 	return {}
 end
 
+M.get_nearest_path = function()
+	local line_num = vim.api.nvim_win_get_cursor(0)[1]
+	local line = vim.api.nvim_get_current_line()
+	local saved_col = vim.api.nvim_win_get_cursor(0)[2]
+	local nearest_path = nil
+	local col = 0
+
+	-- TODO: Handle multiple files on line
+	while col < #line - 1 do
+		vim.api.nvim_win_set_cursor(0, { line_num, col })
+
+		local raw_cfile_path = vim.fn.expand("<cfile>")
+
+		if raw_cfile_path ~= "" then
+			local resolved_path = vim.fn.fnamemodify(raw_cfile_path, ":p")
+			if vim.fn.filereadable(resolved_path) == 1 then
+				nearest_path = resolved_path
+				break
+			end
+		end
+
+		col = col + #raw_cfile_path + 1
+	end
+
+	-- Restore cursor position
+	vim.api.nvim_win_set_cursor(0, { line_num, saved_col })
+
+	return nearest_path
+end
 return M
