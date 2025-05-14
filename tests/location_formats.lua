@@ -1,4 +1,4 @@
-local parser = require("../lua/file_location_parser")
+local parser = require("../lua/fetch")
 
 local tests = {
 	{ input = [[foo.lua:11]], path = "foo.lua", line = 11, end_line = nil, col = nil, end_col = nil },

@@ -80,12 +80,13 @@ M.get_nearest_path = function()
 	local saved_col = vim.api.nvim_win_get_cursor(0)[2]
 	local nearest_path = nil
 	local col = 0
+	local raw_cfile_path = nil
 
 	-- TODO: Handle multiple files on line
 	while col < #line - 1 do
 		vim.api.nvim_win_set_cursor(0, { line_num, col })
 
-		local raw_cfile_path = vim.fn.expand("<cfile>")
+		raw_cfile_path = vim.fn.expand("<cfile>")
 
 		if raw_cfile_path ~= "" then
 			local resolved_path = vim.fn.fnamemodify(raw_cfile_path, ":p")
@@ -101,6 +102,12 @@ M.get_nearest_path = function()
 	-- Restore cursor position
 	vim.api.nvim_win_set_cursor(0, { line_num, saved_col })
 
-	return nearest_path
+	local suffix = line:sub(col + #raw_cfile_path, #line)
+	vim.notify(suffix)
+
+	return { path = nearest_path, line_num = line_num, col = col, suffix = suffix }
 end
+
+M.get_nearest_path_and_location = function() end
+
 return M
