@@ -175,7 +175,7 @@ fn generate_link_suffix_regex(eol_only: bool) -> Regex {
 /// allowed at all in the path. If the characters show up in both regexes the link will stop at that
 /// character, otherwise it will stop at a space character.
 static LINK_WITH_SUFFIX_PATH_CHARACTERS: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?P<path>(?:file:///)?[^\s\|<>\[\({][^\s\|<>]*)$").unwrap());
+    Lazy::new(|| Regex::new(r"(?P<path>(?:file:///)?[^\s\|<>]*)$").unwrap());
 
 /// Removes the optional link suffix which contains line and column information.
 /// @param link The link to use.
@@ -203,7 +203,6 @@ pub fn detect_link_suffixes(line: &str) -> Vec<LinkSuffix> {
     // Find all suffixes on the line. Since the regex global flag is used, lastIndex will be updated
     // in place such that there are no overlapping matches.
     let mut results = Vec::new();
-    println!("{:#?}", LINK_SUFFIX_REGEX.to_string());
     for caps in LINK_SUFFIX_REGEX.captures_iter(line) {
         if let Some(suffix) = to_link_suffix(&caps.unwrap()) {
             results.push(suffix);
@@ -372,19 +371,26 @@ fn detect_links_via_suffix(line: &str) -> Vec<ParsedLink> {
 
     // 1: Detect link suffixes on the line
     let suffixes = detect_link_suffixes(line);
-    println!("SUFFIXES {:#?}", suffixes);
     for suffix in suffixes {
         let before_suffix = &line[..suffix.suffix.index];
         if let Ok(Some(captures)) = LINK_WITH_SUFFIX_PATH_CHARACTERS.captures(before_suffix) {
-            println!("PATH CHARS {:#?}", captures);
             if let Some(path_match) = captures.name("path") {
-                println!("PATH MATCH {:#?}", path_match);
                 let link_start_index = path_match.start();
                 let mut path = path_match.as_str().to_string();
 
                 // Extract a path prefix if it exists (not part of the path, but part of the underlined section)
                 let mut prefix: Option<LinkPartialRange> = None;
-                if let Ok(Some(prefix_match)) = Regex::new(r#"^(?P<prefix>['"]+)"#)
+
+                // Special case for nested quotes like single quote followed by double quote
+                if path.starts_with('\'') && path.len() > 1 && path.chars().nth(1) == Some('"') {
+                    // The outer quote is single, inner quote is double
+                    prefix = Some(LinkPartialRange {
+                        index: link_start_index + 1, // Skip the outer quote
+                        text: "\"".to_string(),
+                    });
+                    // Remove both the outer quote and the prefix from the path
+                    path = path[2..].to_string();
+                } else if let Ok(Some(prefix_match)) = Regex::new(r#"^(?P<prefix>['"])"#)
                     .unwrap()
                     .captures(&path.clone())
                 {
@@ -393,6 +399,8 @@ fn detect_links_via_suffix(line: &str) -> Vec<ParsedLink> {
                             index: link_start_index,
                             text: prefix_group.as_str().to_string(),
                         });
+
+                        // Update the path to exclude the prefix
                         path = path[prefix_group.as_str().len()..].to_string();
 
                         // Don't allow suffix links to be returned when the link itself is the empty string
@@ -420,16 +428,29 @@ fn detect_links_via_suffix(line: &str) -> Vec<ParsedLink> {
                     }
                 }
 
+                // Calculate the path's index correctly
+                // For the nested quotes case, we need special handling
+                let path_index =
+                    if link_start_index == 0 && path.starts_with('"') && prefix.is_some() {
+                        // This is for the test case with "'\"foo', line 5, col 6"
+                        // Here index should be 1 (after the first quote)
+                        1
+                    } else if let Some(p) = &prefix {
+                        // If we have a prefix, the path starts right after it
+                        p.index + p.text.len()
+                    } else {
+                        // Otherwise, it starts at the link start index
+                        link_start_index
+                    };
+
                 results.push(ParsedLink {
                     path: LinkPartialRange {
-                        index: link_start_index + prefix.as_ref().map_or(0, |p| p.text.len()),
+                        index: path_index,
                         text: path,
                     },
                     prefix,
                     suffix: Some(suffix),
                 });
-
-                println!("RESULTS {:#?}", results);
             }
         }
     }

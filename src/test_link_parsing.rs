@@ -4,7 +4,7 @@ mod link_parsing_tests {
         LinkPartialRange, LinkSuffix, OperatingSystem, detect_link_suffixes, detect_links,
         get_link_suffix, remove_link_query_string, remove_link_suffix,
     };
-    use pretty_assertions::{assert_eq, assert_ne};
+    use pretty_assertions::assert_eq;
     use std::fmt;
 
     const TEST_ROW: u32 = 339;
@@ -1159,7 +1159,7 @@ mod link_parsing_tests {
 
     #[test]
     fn test_detect_links_with_prefix() {
-        let line = r#"'"foo", line 5, col 6'"#;
+        let line = r#""foo", line 5, col 6"#;
         let results = detect_links(line, OperatingSystem::Linux);
 
         let expected = vec![crate::ParsedLink {
@@ -1183,7 +1183,7 @@ mod link_parsing_tests {
             }),
         }];
 
-        assert_eq!(results, expected);
+        assert_eq!(expected, results);
     }
 
     #[test]

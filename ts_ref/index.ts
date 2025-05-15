@@ -449,4 +449,4 @@ function detectPathsNoSuffix(line: string, os: OperatingSystem): IParsedLink[] {
   return results;
 }
 
-detectLinks("foo, line 5, col 6", OperatingSystem.Linux);
+detectLinks('"foo", line 5, col 6', OperatingSystem.Linux);
