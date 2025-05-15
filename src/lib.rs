@@ -13,13 +13,13 @@ pub enum OperatingSystem {
     Macintosh,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LinkPartialRange {
     pub index: usize,
     pub text: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LinkSuffix {
     pub row: Option<u32>,
     pub col: Option<u32>,
@@ -28,7 +28,7 @@ pub struct LinkSuffix {
     pub suffix: LinkPartialRange,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ParsedLink {
     pub path: LinkPartialRange,
     pub prefix: Option<LinkPartialRange>,

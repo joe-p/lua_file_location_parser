@@ -4,6 +4,7 @@ mod link_parsing_tests {
         LinkPartialRange, LinkSuffix, OperatingSystem, detect_link_suffixes, detect_links,
         get_link_suffix, remove_link_query_string, remove_link_suffix,
     };
+    use pretty_assertions::{assert_eq, assert_ne};
     use std::fmt;
 
     const TEST_ROW: u32 = 339;
@@ -944,11 +945,12 @@ mod link_parsing_tests {
     fn test_remove_link_suffix() {
         for test_link in TEST_LINKS {
             let result = remove_link_suffix(test_link.link);
-            if let Some(suffix) = test_link.suffix {
-                assert_eq!(result, test_link.link.replace(suffix, ""));
+            let expected = if let Some(suffix) = test_link.suffix {
+                test_link.link.replace(suffix, "")
             } else {
-                assert_eq!(result, test_link.link);
-            }
+                test_link.link.to_string()
+            };
+            assert_eq!(result, expected);
         }
     }
 
@@ -958,49 +960,36 @@ mod link_parsing_tests {
             let result = get_link_suffix(test_link.link);
 
             if let Some(suffix) = test_link.suffix {
-                // Create expected object
-                let expected_suffix = LinkPartialRange {
-                    index: test_link.link.len() - suffix.len(),
-                    text: suffix.to_string(),
+                let expected = LinkSuffix {
+                    row: if test_link.has_row {
+                        Some(TEST_ROW)
+                    } else {
+                        None
+                    },
+                    col: if test_link.has_col {
+                        Some(TEST_COL)
+                    } else {
+                        None
+                    },
+                    row_end: if test_link.has_row_end {
+                        Some(TEST_ROW_END)
+                    } else {
+                        None
+                    },
+                    col_end: if test_link.has_col_end {
+                        Some(TEST_COL_END)
+                    } else {
+                        None
+                    },
+                    suffix: LinkPartialRange {
+                        index: test_link.link.len() - suffix.len(),
+                        text: suffix.to_string(),
+                    },
                 };
 
-                let expected_row = if test_link.has_row {
-                    Some(TEST_ROW)
-                } else {
-                    None
-                };
-                let expected_col = if test_link.has_col {
-                    Some(TEST_COL)
-                } else {
-                    None
-                };
-                let expected_row_end = if test_link.has_row_end {
-                    Some(TEST_ROW_END)
-                } else {
-                    None
-                };
-                let expected_col_end = if test_link.has_col_end {
-                    Some(TEST_COL_END)
-                } else {
-                    None
-                };
-
-                // Verify result
-                assert!(
-                    result.is_some(),
-                    "Expected a suffix for link {}",
-                    test_link.link
-                );
-                if let Some(actual) = result {
-                    assert_eq!(actual.row, expected_row);
-                    assert_eq!(actual.col, expected_col);
-                    assert_eq!(actual.row_end, expected_row_end);
-                    assert_eq!(actual.col_end, expected_col_end);
-                    assert_eq!(actual.suffix.index, expected_suffix.index);
-                    assert_eq!(actual.suffix.text, expected_suffix.text);
-                }
+                assert_eq!(result, Some(expected));
             } else {
-                assert!(result.is_none());
+                assert_eq!(result, None);
             }
         }
     }
@@ -1038,17 +1027,9 @@ mod link_parsing_tests {
                     },
                 }];
 
-                assert_eq!(result.len(), expected.len());
-                if !result.is_empty() {
-                    assert_eq!(result[0].row, expected[0].row);
-                    assert_eq!(result[0].col, expected[0].col);
-                    assert_eq!(result[0].row_end, expected[0].row_end);
-                    assert_eq!(result[0].col_end, expected[0].col_end);
-                    assert_eq!(result[0].suffix.index, expected[0].suffix.index);
-                    assert_eq!(result[0].suffix.text, expected[0].suffix.text);
-                }
+                assert_eq!(result, expected);
             } else {
-                assert!(result.is_empty());
+                assert_eq!(result, Vec::new());
             }
         }
     }
@@ -1058,44 +1039,57 @@ mod link_parsing_tests {
         let line = "foo(1, 2) bar[3, 4] baz on line 5";
         let result = detect_link_suffixes(line);
 
-        assert_eq!(result.len(), 3);
+        let expected = vec![
+            LinkSuffix {
+                row: Some(1),
+                col: Some(2),
+                row_end: None,
+                col_end: None,
+                suffix: LinkPartialRange {
+                    index: 3,
+                    text: "(1, 2)".to_string(),
+                },
+            },
+            LinkSuffix {
+                row: Some(3),
+                col: Some(4),
+                row_end: None,
+                col_end: None,
+                suffix: LinkPartialRange {
+                    index: 13,
+                    text: "[3, 4]".to_string(),
+                },
+            },
+            LinkSuffix {
+                row: Some(5),
+                col: None,
+                row_end: None,
+                col_end: None,
+                suffix: LinkPartialRange {
+                    index: 23,
+                    text: " on line 5".to_string(),
+                },
+            },
+        ];
 
-        // Verify first suffix
-        assert_eq!(result[0].row, Some(1));
-        assert_eq!(result[0].col, Some(2));
-        assert_eq!(result[0].row_end, None);
-        assert_eq!(result[0].col_end, None);
-        assert_eq!(result[0].suffix.index, 3);
-        assert_eq!(result[0].suffix.text, "(1, 2)");
-
-        // Verify second suffix
-        assert_eq!(result[1].row, Some(3));
-        assert_eq!(result[1].col, Some(4));
-        assert_eq!(result[1].row_end, None);
-        assert_eq!(result[1].col_end, None);
-        assert_eq!(result[1].suffix.index, 13);
-        assert_eq!(result[1].suffix.text, "[3, 4]");
-
-        // Verify third suffix
-        assert_eq!(result[2].row, Some(5));
-        assert_eq!(result[2].col, None);
-        assert_eq!(result[2].row_end, None);
-        assert_eq!(result[2].col_end, None);
-        assert_eq!(result[2].suffix.index, 23);
-        assert_eq!(result[2].suffix.text, " on line 5");
+        assert_eq!(result, expected);
     }
 
     #[test]
     fn test_remove_link_query_string() {
-        assert_eq!(remove_link_query_string("?a=b"), "");
-        assert_eq!(remove_link_query_string("foo?a=b"), "foo");
-        assert_eq!(remove_link_query_string("./foo?a=b"), "./foo");
-        assert_eq!(remove_link_query_string("/foo/bar?a=b"), "/foo/bar");
-        assert_eq!(remove_link_query_string("foo?a=b?"), "foo");
-        assert_eq!(remove_link_query_string("foo?a=b&c=d"), "foo");
+        let test_cases = vec![
+            ("?a=b", ""),
+            ("foo?a=b", "foo"),
+            ("./foo?a=b", "./foo"),
+            ("/foo/bar?a=b", "/foo/bar"),
+            ("foo?a=b?", "foo"),
+            ("foo?a=b&c=d", "foo"),
+            ("\\\\?\\foo?a=b", "\\\\?\\foo"),
+        ];
 
-        // UNC paths
-        assert_eq!(remove_link_query_string("\\\\?\\foo?a=b"), "\\\\?\\foo");
+        for (input, expected) in test_cases {
+            assert_eq!(remove_link_query_string(input), expected);
+        }
     }
 
     #[test]
@@ -1103,49 +1097,64 @@ mod link_parsing_tests {
         let line = "foo(1, 2) bar[3, 4] \"baz\" on line 5";
         let results = detect_links(line, OperatingSystem::Linux);
 
-        assert_eq!(results.len(), 3);
+        let expected = vec![
+            crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 0,
+                    text: "foo".to_string(),
+                },
+                prefix: None,
+                suffix: Some(LinkSuffix {
+                    row: Some(1),
+                    col: Some(2),
+                    row_end: None,
+                    col_end: None,
+                    suffix: LinkPartialRange {
+                        index: 3,
+                        text: "(1, 2)".to_string(),
+                    },
+                }),
+            },
+            crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 10,
+                    text: "bar".to_string(),
+                },
+                prefix: None,
+                suffix: Some(LinkSuffix {
+                    row: Some(3),
+                    col: Some(4),
+                    row_end: None,
+                    col_end: None,
+                    suffix: LinkPartialRange {
+                        index: 13,
+                        text: "[3, 4]".to_string(),
+                    },
+                }),
+            },
+            crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 21,
+                    text: "baz".to_string(),
+                },
+                prefix: Some(LinkPartialRange {
+                    index: 20,
+                    text: "\"".to_string(),
+                }),
+                suffix: Some(LinkSuffix {
+                    row: Some(5),
+                    col: None,
+                    row_end: None,
+                    col_end: None,
+                    suffix: LinkPartialRange {
+                        index: 24,
+                        text: "\" on line 5".to_string(),
+                    },
+                }),
+            },
+        ];
 
-        // First link
-        assert_eq!(results[0].path.index, 0);
-        assert_eq!(results[0].path.text, "foo");
-        assert!(results[0].prefix.is_none());
-        assert!(results[0].suffix.is_some());
-        let suffix = results[0].suffix.as_ref().unwrap();
-        assert_eq!(suffix.row, Some(1));
-        assert_eq!(suffix.col, Some(2));
-        assert_eq!(suffix.row_end, None);
-        assert_eq!(suffix.col_end, None);
-        assert_eq!(suffix.suffix.index, 3);
-        assert_eq!(suffix.suffix.text, "(1, 2)");
-
-        // Second link
-        assert_eq!(results[1].path.index, 10);
-        assert_eq!(results[1].path.text, "bar");
-        assert!(results[1].prefix.is_none());
-        assert!(results[1].suffix.is_some());
-        let suffix = results[1].suffix.as_ref().unwrap();
-        assert_eq!(suffix.row, Some(3));
-        assert_eq!(suffix.col, Some(4));
-        assert_eq!(suffix.row_end, None);
-        assert_eq!(suffix.col_end, None);
-        assert_eq!(suffix.suffix.index, 13);
-        assert_eq!(suffix.suffix.text, "[3, 4]");
-
-        // Third link
-        assert_eq!(results[2].path.index, 21);
-        assert_eq!(results[2].path.text, "baz");
-        assert!(results[2].prefix.is_some());
-        let prefix = results[2].prefix.as_ref().unwrap();
-        assert_eq!(prefix.index, 20);
-        assert_eq!(prefix.text, "\"");
-        assert!(results[2].suffix.is_some());
-        let suffix = results[2].suffix.as_ref().unwrap();
-        assert_eq!(suffix.row, Some(5));
-        assert_eq!(suffix.col, None);
-        assert_eq!(suffix.row_end, None);
-        assert_eq!(suffix.col_end, None);
-        assert_eq!(suffix.suffix.index, 24);
-        assert_eq!(suffix.suffix.text, "\" on line 5");
+        assert_eq!(results, expected);
     }
 
     #[test]
@@ -1153,22 +1162,28 @@ mod link_parsing_tests {
         let line = r#"'"foo", line 5, col 6'"#;
         let results = detect_links(line, OperatingSystem::Linux);
 
-        assert_eq!(results.len(), 1);
+        let expected = vec![crate::ParsedLink {
+            path: LinkPartialRange {
+                index: 1,
+                text: "foo".to_string(),
+            },
+            prefix: Some(LinkPartialRange {
+                index: 0,
+                text: "\"".to_string(),
+            }),
+            suffix: Some(LinkSuffix {
+                row: Some(5),
+                col: Some(6),
+                row_end: None,
+                col_end: None,
+                suffix: LinkPartialRange {
+                    index: 4,
+                    text: "\", line 5, col 6".to_string(),
+                },
+            }),
+        }];
 
-        assert_eq!(results[0].path.index, 1);
-        assert_eq!(results[0].path.text, "foo");
-        assert!(results[0].prefix.is_some());
-        let prefix = results[0].prefix.as_ref().unwrap();
-        assert_eq!(prefix.index, 0);
-        assert_eq!(prefix.text, "\"");
-        assert!(results[0].suffix.is_some());
-        let suffix = results[0].suffix.as_ref().unwrap();
-        assert_eq!(suffix.row, Some(5));
-        assert_eq!(suffix.col, Some(6));
-        assert_eq!(suffix.row_end, None);
-        assert_eq!(suffix.col_end, None);
-        assert_eq!(suffix.suffix.index, 4);
-        assert_eq!(suffix.suffix.text, "\", line 5, col 6");
+        assert_eq!(results, expected);
     }
 
     #[test]
@@ -1176,23 +1191,28 @@ mod link_parsing_tests {
         let line = "echo '\"foo\", line 5, col 6'";
         let results = detect_links(line, OperatingSystem::Linux);
 
-        println!("{:#?}", results);
-        assert_eq!(results.len(), 1);
+        let expected = vec![crate::ParsedLink {
+            path: LinkPartialRange {
+                index: 7,
+                text: "foo".to_string(),
+            },
+            prefix: Some(LinkPartialRange {
+                index: 6,
+                text: "\"".to_string(),
+            }),
+            suffix: Some(LinkSuffix {
+                row: Some(5),
+                col: Some(6),
+                row_end: None,
+                col_end: None,
+                suffix: LinkPartialRange {
+                    index: 10,
+                    text: "\", line 5, col 6".to_string(),
+                },
+            }),
+        }];
 
-        assert_eq!(results[0].path.index, 7);
-        assert_eq!(results[0].path.text, "foo");
-        assert!(results[0].prefix.is_some());
-        let prefix = results[0].prefix.as_ref().unwrap();
-        assert_eq!(prefix.index, 6);
-        assert_eq!(prefix.text, "\"");
-        assert!(results[0].suffix.is_some());
-        let suffix = results[0].suffix.as_ref().unwrap();
-        assert_eq!(suffix.row, Some(5));
-        assert_eq!(suffix.col, Some(6));
-        assert_eq!(suffix.row_end, None);
-        assert_eq!(suffix.col_end, None);
-        assert_eq!(suffix.suffix.index, 10);
-        assert_eq!(suffix.suffix.text, "\", line 5, col 6");
+        assert_eq!(results, expected);
     }
 
     #[test]
@@ -1200,29 +1220,38 @@ mod link_parsing_tests {
         let line = "PS C:\\Github\\microsoft\\vscode> echo '\"foo\", line 5, col 6'";
         let results = detect_links(line, OperatingSystem::Windows);
 
-        assert_eq!(results.len(), 2);
+        let expected = vec![
+            crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 3,
+                    text: "C:\\Github\\microsoft\\vscode".to_string(),
+                },
+                prefix: None,
+                suffix: None,
+            },
+            crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 38,
+                    text: "foo".to_string(),
+                },
+                prefix: Some(LinkPartialRange {
+                    index: 37,
+                    text: "\"".to_string(),
+                }),
+                suffix: Some(LinkSuffix {
+                    row: Some(5),
+                    col: Some(6),
+                    row_end: None,
+                    col_end: None,
+                    suffix: LinkPartialRange {
+                        index: 41,
+                        text: "\", line 5, col 6".to_string(),
+                    },
+                }),
+            },
+        ];
 
-        // First link (path without suffix)
-        assert_eq!(results[0].path.index, 3);
-        assert_eq!(results[0].path.text, "C:\\Github\\microsoft\\vscode");
-        assert!(results[0].prefix.is_none());
-        assert!(results[0].suffix.is_none());
-
-        // Second link (with prefix and suffix)
-        assert_eq!(results[1].path.index, 38);
-        assert_eq!(results[1].path.text, "foo");
-        assert!(results[1].prefix.is_some());
-        let prefix = results[1].prefix.as_ref().unwrap();
-        assert_eq!(prefix.index, 37);
-        assert_eq!(prefix.text, "\"");
-        assert!(results[1].suffix.is_some());
-        let suffix = results[1].suffix.as_ref().unwrap();
-        assert_eq!(suffix.row, Some(5));
-        assert_eq!(suffix.col, Some(6));
-        assert_eq!(suffix.row_end, None);
-        assert_eq!(suffix.col_end, None);
-        assert_eq!(suffix.suffix.index, 41);
-        assert_eq!(suffix.suffix.text, "\", line 5, col 6");
+        assert_eq!(results, expected);
     }
 
     #[test]
@@ -1231,28 +1260,40 @@ mod link_parsing_tests {
         let line = "|C:\\Github\\microsoft\\vscode|";
         let results = detect_links(line, OperatingSystem::Windows);
 
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].path.index, 1);
-        assert_eq!(results[0].path.text, "C:\\Github\\microsoft\\vscode");
-        assert!(results[0].prefix.is_none());
-        assert!(results[0].suffix.is_none());
+        let expected = vec![crate::ParsedLink {
+            path: LinkPartialRange {
+                index: 1,
+                text: "C:\\Github\\microsoft\\vscode".to_string(),
+            },
+            prefix: None,
+            suffix: None,
+        }];
+
+        assert_eq!(results, expected);
 
         // Test with pipe characters and suffix
         let line = "|C:\\Github\\microsoft\\vscode:400|";
         let results = detect_links(line, OperatingSystem::Windows);
 
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].path.index, 1);
-        assert_eq!(results[0].path.text, "C:\\Github\\microsoft\\vscode");
-        assert!(results[0].prefix.is_none());
-        assert!(results[0].suffix.is_some());
-        let suffix = results[0].suffix.as_ref().unwrap();
-        assert_eq!(suffix.row, Some(400));
-        assert_eq!(suffix.col, None);
-        assert_eq!(suffix.row_end, None);
-        assert_eq!(suffix.col_end, None);
-        assert_eq!(suffix.suffix.index, 27);
-        assert_eq!(suffix.suffix.text, ":400");
+        let expected = vec![crate::ParsedLink {
+            path: LinkPartialRange {
+                index: 1,
+                text: "C:\\Github\\microsoft\\vscode".to_string(),
+            },
+            prefix: None,
+            suffix: Some(LinkSuffix {
+                row: Some(400),
+                col: None,
+                row_end: None,
+                col_end: None,
+                suffix: LinkPartialRange {
+                    index: 27,
+                    text: ":400".to_string(),
+                },
+            }),
+        }];
+
+        assert_eq!(results, expected);
     }
 
     #[test]
@@ -1272,55 +1313,79 @@ mod link_parsing_tests {
             let line = format!("<{}<", path);
             let results = detect_links(&line, *os);
 
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].path.index, 1);
-            assert_eq!(results[0].path.text, path);
-            assert!(results[0].prefix.is_none());
-            assert!(results[0].suffix.is_none());
+            let expected = vec![crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 1,
+                    text: path.to_string(),
+                },
+                prefix: None,
+                suffix: None,
+            }];
+
+            assert_eq!(results, expected);
 
             // Test with angle brackets and suffix
             let line = format!("<{}:400<", path);
             let results = detect_links(&line, *os);
 
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].path.index, 1);
-            assert_eq!(results[0].path.text, path);
-            assert!(results[0].prefix.is_none());
-            assert!(results[0].suffix.is_some());
-            let suffix = results[0].suffix.as_ref().unwrap();
-            assert_eq!(suffix.row, Some(400));
-            assert_eq!(suffix.col, None);
-            assert_eq!(suffix.row_end, None);
-            assert_eq!(suffix.col_end, None);
-            assert_eq!(suffix.suffix.index, 1 + path.len());
-            assert_eq!(suffix.suffix.text, ":400");
+            let expected = vec![crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 1,
+                    text: path.to_string(),
+                },
+                prefix: None,
+                suffix: Some(LinkSuffix {
+                    row: Some(400),
+                    col: None,
+                    row_end: None,
+                    col_end: None,
+                    suffix: LinkPartialRange {
+                        index: 1 + path.len(),
+                        text: ":400".to_string(),
+                    },
+                }),
+            }];
+
+            assert_eq!(results, expected);
 
             // Test with angle brackets (reversed)
             let line = format!(">{}>", path);
             let results = detect_links(&line, *os);
 
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].path.index, 1);
-            assert_eq!(results[0].path.text, path);
-            assert!(results[0].prefix.is_none());
-            assert!(results[0].suffix.is_none());
+            let expected = vec![crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 1,
+                    text: path.to_string(),
+                },
+                prefix: None,
+                suffix: None,
+            }];
+
+            assert_eq!(results, expected);
 
             // Test with angle brackets and suffix (reversed)
             let line = format!(">{}:400>", path);
             let results = detect_links(&line, *os);
 
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].path.index, 1);
-            assert_eq!(results[0].path.text, path);
-            assert!(results[0].prefix.is_none());
-            assert!(results[0].suffix.is_some());
-            let suffix = results[0].suffix.as_ref().unwrap();
-            assert_eq!(suffix.row, Some(400));
-            assert_eq!(suffix.col, None);
-            assert_eq!(suffix.row_end, None);
-            assert_eq!(suffix.col_end, None);
-            assert_eq!(suffix.suffix.index, 1 + path.len());
-            assert_eq!(suffix.suffix.text, ":400");
+            let expected = vec![crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 1,
+                    text: path.to_string(),
+                },
+                prefix: None,
+                suffix: Some(LinkSuffix {
+                    row: Some(400),
+                    col: None,
+                    row_end: None,
+                    col_end: None,
+                    suffix: LinkPartialRange {
+                        index: 1 + path.len(),
+                        text: ":400".to_string(),
+                    },
+                }),
+            }];
+
+            assert_eq!(results, expected);
         }
     }
 
@@ -1341,29 +1406,39 @@ mod link_parsing_tests {
             let line = format!("{}?a=b", path);
             let results = detect_links(&line, *os);
 
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].path.index, 0);
-            assert_eq!(results[0].path.text, path);
-            assert!(results[0].prefix.is_none());
-            assert!(results[0].suffix.is_none());
+            let expected = vec![crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 0,
+                    text: path.to_string(),
+                },
+                prefix: None,
+                suffix: None,
+            }];
+
+            assert_eq!(results, expected);
 
             // Test with more complex query string
             let line = format!("{}?a=b&c=d", path);
             let results = detect_links(&line, *os);
 
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].path.index, 0);
-            assert_eq!(results[0].path.text, path);
-            assert!(results[0].prefix.is_none());
-            assert!(results[0].suffix.is_none());
+            let expected = vec![crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 0,
+                    text: path.to_string(),
+                },
+                prefix: None,
+                suffix: None,
+            }];
+
+            assert_eq!(results, expected);
 
             // Test no links starting with ? in query strings
-            let line = format!("http://foo.com/?bar=/a/b&baz=c");
+            let line = "http://foo.com/?bar=/a/b&baz=c";
             let results = detect_links(&line, *os);
             assert!(!results.iter().any(|link| link.path.text.starts_with('?')));
 
             // Test no links starting with ? in Windows-style query strings
-            let line = format!("http://foo.com/?bar=a:\\b&baz=c");
+            let line = "http://foo.com/?bar=a:\\b&baz=c";
             let results = detect_links(&line, *os);
             assert!(!results.iter().any(|link| link.path.text.starts_with('?')));
         }
@@ -1375,36 +1450,56 @@ mod link_parsing_tests {
         let line = "--- a/foo/bar";
         let results = detect_links(line, OperatingSystem::Linux);
 
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].path.index, 6);
-        assert_eq!(results[0].path.text, "foo/bar");
-        assert!(results[0].prefix.is_none());
-        assert!(results[0].suffix.is_none());
+        let expected = vec![crate::ParsedLink {
+            path: LinkPartialRange {
+                index: 6,
+                text: "foo/bar".to_string(),
+            },
+            prefix: None,
+            suffix: None,
+        }];
+
+        assert_eq!(results, expected);
 
         // Test for "+++ b/foo/bar"
         let line = "+++ b/foo/bar";
         let results = detect_links(line, OperatingSystem::Linux);
 
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].path.index, 6);
-        assert_eq!(results[0].path.text, "foo/bar");
-        assert!(results[0].prefix.is_none());
-        assert!(results[0].suffix.is_none());
+        let expected = vec![crate::ParsedLink {
+            path: LinkPartialRange {
+                index: 6,
+                text: "foo/bar".to_string(),
+            },
+            prefix: None,
+            suffix: None,
+        }];
+
+        assert_eq!(results, expected);
 
         // Test for "diff --git a/foo/bar b/foo/baz"
         let line = "diff --git a/foo/bar b/foo/baz";
         let results = detect_links(line, OperatingSystem::Linux);
 
-        assert_eq!(results.len(), 2);
-        assert_eq!(results[0].path.index, 13);
-        assert_eq!(results[0].path.text, "foo/bar");
-        assert!(results[0].prefix.is_none());
-        assert!(results[0].suffix.is_none());
+        let expected = vec![
+            crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 13,
+                    text: "foo/bar".to_string(),
+                },
+                prefix: None,
+                suffix: None,
+            },
+            crate::ParsedLink {
+                path: LinkPartialRange {
+                    index: 23,
+                    text: "foo/baz".to_string(),
+                },
+                prefix: None,
+                suffix: None,
+            },
+        ];
 
-        assert_eq!(results[1].path.index, 23);
-        assert_eq!(results[1].path.text, "foo/baz");
-        assert!(results[1].prefix.is_none());
-        assert!(results[1].suffix.is_none());
+        assert_eq!(results, expected);
     }
 
     #[test]
@@ -1420,58 +1515,112 @@ mod link_parsing_tests {
             let line = format!(" {} {} {} ", link1.link, link2.link, link3.link);
             let results = detect_links(&line, OperatingSystem::Linux);
 
-            assert_eq!(results.len(), 3, "Failed on line: {}", line);
+            let expected = vec![
+                crate::ParsedLink {
+                    prefix: link1.prefix.map(|p| LinkPartialRange {
+                        index: 1,
+                        text: p.to_string(),
+                    }),
+                    path: LinkPartialRange {
+                        index: 1 + (link1.prefix.map_or(0, |p| p.len())),
+                        text: link1
+                            .link
+                            .replace(link1.suffix.unwrap(), "")
+                            .replace(link1.prefix.unwrap_or(""), ""),
+                    },
+                    suffix: Some(LinkSuffix {
+                        row: if link1.has_row { Some(TEST_ROW) } else { None },
+                        col: if link1.has_col { Some(TEST_COL) } else { None },
+                        row_end: if link1.has_row_end {
+                            Some(TEST_ROW_END)
+                        } else {
+                            None
+                        },
+                        col_end: if link1.has_col_end {
+                            Some(TEST_COL_END)
+                        } else {
+                            None
+                        },
+                        suffix: LinkPartialRange {
+                            index: 1 + (link1.link.len() - link1.suffix.unwrap().len()),
+                            text: link1.suffix.unwrap().to_string(),
+                        },
+                    }),
+                },
+                crate::ParsedLink {
+                    prefix: link2.prefix.map(|p| LinkPartialRange {
+                        index: (link1.link.len() + 2) + (link1.prefix.map_or(0, |p| p.len())),
+                        text: p.to_string(),
+                    }),
+                    path: LinkPartialRange {
+                        index: (link1.link.len() + 2)
+                            + (link1.prefix.map_or(0, |p| p.len()))
+                            + (link2.prefix.map_or(0, |p| p.len())),
+                        text: link2
+                            .link
+                            .replace(link2.suffix.unwrap(), "")
+                            .replace(link2.prefix.unwrap_or(""), ""),
+                    },
+                    suffix: Some(LinkSuffix {
+                        row: if link2.has_row { Some(TEST_ROW) } else { None },
+                        col: if link2.has_col { Some(TEST_COL) } else { None },
+                        row_end: if link2.has_row_end {
+                            Some(TEST_ROW_END)
+                        } else {
+                            None
+                        },
+                        col_end: if link2.has_col_end {
+                            Some(TEST_COL_END)
+                        } else {
+                            None
+                        },
+                        suffix: LinkPartialRange {
+                            index: (link1.link.len() + 2)
+                                + (link1.prefix.map_or(0, |p| p.len()))
+                                + (link2.link.len() - link2.suffix.unwrap().len()),
+                            text: link2.suffix.unwrap().to_string(),
+                        },
+                    }),
+                },
+                crate::ParsedLink {
+                    prefix: link3.prefix.map(|p| LinkPartialRange {
+                        index: (link1.link.len() + link2.link.len() + 3)
+                            + (link1.prefix.map_or(0, |p| p.len())),
+                        text: p.to_string(),
+                    }),
+                    path: LinkPartialRange {
+                        index: (link1.link.len() + link2.link.len() + 3)
+                            + (link1.prefix.map_or(0, |p| p.len()))
+                            + (link3.prefix.map_or(0, |p| p.len())),
+                        text: link3
+                            .link
+                            .replace(link3.suffix.unwrap(), "")
+                            .replace(link3.prefix.unwrap_or(""), ""),
+                    },
+                    suffix: Some(LinkSuffix {
+                        row: if link3.has_row { Some(TEST_ROW) } else { None },
+                        col: if link3.has_col { Some(TEST_COL) } else { None },
+                        row_end: if link3.has_row_end {
+                            Some(TEST_ROW_END)
+                        } else {
+                            None
+                        },
+                        col_end: if link3.has_col_end {
+                            Some(TEST_COL_END)
+                        } else {
+                            None
+                        },
+                        suffix: LinkPartialRange {
+                            index: (link1.link.len() + link2.link.len() + 3)
+                                + (link1.prefix.map_or(0, |p| p.len()))
+                                + (link3.link.len() - link3.suffix.unwrap().len()),
+                            text: link3.suffix.unwrap().to_string(),
+                        },
+                    }),
+                },
+            ];
 
-            // Check first link
-            let suffix1 = link1.suffix.unwrap();
-            assert_eq!(
-                results[0].path.index,
-                1 + (link1.prefix.map_or(0, |p| p.len()))
-            );
-            assert_eq!(
-                results[0].path.text,
-                link1
-                    .link
-                    .replace(suffix1, "")
-                    .replace(link1.prefix.unwrap_or(""), "")
-            );
-
-            if let Some(prefix) = link1.prefix {
-                assert!(results[0].prefix.is_some());
-                let prefix_obj = results[0].prefix.as_ref().unwrap();
-                assert_eq!(prefix_obj.index, 1);
-                assert_eq!(prefix_obj.text, prefix);
-            } else {
-                assert!(results[0].prefix.is_none());
-            }
-
-            assert!(results[0].suffix.is_some());
-            let suffix_obj = results[0].suffix.as_ref().unwrap();
-            assert_eq!(suffix_obj.row.is_some(), link1.has_row);
-            if link1.has_row {
-                assert_eq!(suffix_obj.row, Some(TEST_ROW));
-            }
-            assert_eq!(suffix_obj.col.is_some(), link1.has_col);
-            if link1.has_col {
-                assert_eq!(suffix_obj.col, Some(TEST_COL));
-            }
-            assert_eq!(suffix_obj.row_end.is_some(), link1.has_row_end);
-            if link1.has_row_end {
-                assert_eq!(suffix_obj.row_end, Some(TEST_ROW_END));
-            }
-            assert_eq!(suffix_obj.col_end.is_some(), link1.has_col_end);
-            if link1.has_col_end {
-                assert_eq!(suffix_obj.col_end, Some(TEST_COL_END));
-            }
-            assert_eq!(
-                suffix_obj.suffix.index,
-                1 + (link1.link.len() - suffix1.len())
-            );
-            assert_eq!(suffix_obj.suffix.text, suffix1);
-
-            // Spot check other links
-            assert!(results[1].path.index > results[0].path.index);
-            assert!(results[2].path.index > results[1].path.index);
+            assert_eq!(results, expected);
         }
     }
 
@@ -1480,6 +1629,6 @@ mod link_parsing_tests {
         // Test links where path is empty string with suffixes
         let line = "\"\",1";
         let results = detect_links(line, OperatingSystem::Linux);
-        assert_eq!(results.len(), 0, "Empty path links should be ignored");
+        assert_eq!(results, Vec::new());
     }
 }
