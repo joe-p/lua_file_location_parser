@@ -13,13 +13,13 @@ pub enum OperatingSystem {
     Macintosh,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LinkPartialRange {
     pub index: usize,
     pub text: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LinkSuffix {
     pub row: Option<u32>,
     pub col: Option<u32>,
@@ -28,6 +28,7 @@ pub struct LinkSuffix {
     pub suffix: LinkPartialRange,
 }
 
+#[derive(Debug)]
 pub struct ParsedLink {
     pub path: LinkPartialRange,
     pub prefix: Option<LinkPartialRange>,
@@ -102,8 +103,9 @@ fn generate_link_suffix_regex(eol_only: bool) -> Regex {
         // "foo",339.12
         // "foo",339.12-789
         // "foo",339.12-341.789
+        // (?::|#| |['"],|, )${r()}([:.]${c()}(?:-(?:${re()}\\.)?${ce()})?)?
         format!(
-            "(?::|#| |[']\",|, ){0}([:.]({1}(?:-(?:{2}\\.)?{3})?))?{4}",
+            r#"(?::|#| |['"],|, ){0}([:.]{1}(?:-(?:{2}\\.)?{3})?)?{4}"#,
             r(),
             c(),
             re(),
@@ -128,8 +130,12 @@ fn generate_link_suffix_regex(eol_only: bool) -> Regex {
         // "foo", line 339, characters 12-789      [#171880]
         // "foo", lines 339-341                    [#171880]
         // "foo", lines 339-341, characters 12-789 [#178287]
+        //
+        //
+        //     ['"]?(?:,? |: ?| on )lines? ${r()}(?:-${re()})?(?:,? (?:col(?:umn)?|characters?) ${c()}(?:-${ce()})?)?
         format!(
-            "[']\"?(?:,? |: ?| on )lines? {0}(?:-{1})?(?:,? (?:col(?:umn)?|characters?) {2}(?:-{3})?)?{4}",
+            // r#"['"]?(?:,? |: ?| on )lines? {0}(?:-{1})?(?:,? (?:col(?:umn)?|characters?) {2}(?:-{3})?)?{4}"#,
+            r#"['"]?(?:,? |: ?| on )lines? {0}(?:-{1})?(?:,? (?:col(?:umn)?|characters?) {2}(?:-{3})?)?{4}"#,
             r(),
             re(),
             c(),
@@ -197,6 +203,7 @@ pub fn detect_link_suffixes(line: &str) -> Vec<LinkSuffix> {
     // Find all suffixes on the line. Since the regex global flag is used, lastIndex will be updated
     // in place such that there are no overlapping matches.
     let mut results = Vec::new();
+    println!("{:#?}", LINK_SUFFIX_REGEX.to_string());
     for caps in LINK_SUFFIX_REGEX.captures_iter(line) {
         if let Some(suffix) = to_link_suffix(&caps.unwrap()) {
             results.push(suffix);
@@ -365,10 +372,13 @@ fn detect_links_via_suffix(line: &str) -> Vec<ParsedLink> {
 
     // 1: Detect link suffixes on the line
     let suffixes = detect_link_suffixes(line);
+    println!("SUFFIXES {:#?}", suffixes);
     for suffix in suffixes {
         let before_suffix = &line[..suffix.suffix.index];
         if let Ok(Some(captures)) = LINK_WITH_SUFFIX_PATH_CHARACTERS.captures(before_suffix) {
+            println!("PATH CHARS {:#?}", captures);
             if let Some(path_match) = captures.name("path") {
+                println!("PATH MATCH {:#?}", path_match);
                 let link_start_index = path_match.start();
                 let mut path = path_match.as_str().to_string();
 
@@ -418,6 +428,8 @@ fn detect_links_via_suffix(line: &str) -> Vec<ParsedLink> {
                     prefix,
                     suffix: Some(suffix),
                 });
+
+                println!("RESULTS {:#?}", results);
             }
         }
     }
@@ -433,7 +445,6 @@ fn detect_paths_no_suffix(line: &str, os: OperatingSystem) -> Vec<ParsedLink> {
         _ => UNIX_LOCAL_LINK_CLAUSE.clone(),
     };
 
-    println!("{}", regex_pattern);
     let regex = Regex::new(&regex_pattern).unwrap();
 
     for captures in regex.captures_iter(line) {
@@ -502,3 +513,6 @@ mod test {
         assert_eq!(suffix.expect("should have suffix").row, Some(11));
     }
 }
+
+#[cfg(test)]
+mod test_link_parsing;
