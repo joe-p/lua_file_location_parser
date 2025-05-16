@@ -1553,7 +1553,8 @@ mod link_parsing_tests {
                         .prefix
                         .clone()
                         .map_or(detected_link_1.path.index, |prefix| prefix.index)
-                        + link1.link.len(),
+                        + link1.link.len()
+                        + 1,
 
                     text: p.to_string(),
                 }),
@@ -1604,8 +1605,7 @@ mod link_parsing_tests {
                         .clone()
                         .map_or(detected_link_2.path.index, |prefix| prefix.index)
                         + link2.link.len()
-                        + 1
-                        + (link3.link.len() - link3.suffix.unwrap().len()),
+                        + 1,
                     text: p.to_string(),
                 }),
                 path: LinkPartialRange {
@@ -1615,7 +1615,7 @@ mod link_parsing_tests {
                         .map_or(detected_link_2.path.index, |prefix| prefix.index)
                         + link2.link.len()
                         + 1
-                        + (link3.link.len() - link3.suffix.unwrap().len()),
+                        + link3.prefix.map_or(0, |prefix| prefix.len()),
                     text: link3
                         .link
                         .replace(link3.suffix.unwrap(), "")

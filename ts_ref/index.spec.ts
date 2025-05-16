@@ -1261,9 +1261,9 @@ suite("TerminalLinkParsing", () => {
 
     suite("should detect 3 suffix links on a single line", () => {
       for (let i = 0; i < testLinksWithSuffix.length - 2; i++) {
-        const link1 = testLinksWithSuffix[i];
-        const link2 = testLinksWithSuffix[i + 1];
-        const link3 = testLinksWithSuffix[i + 2];
+        const link1 = testLinksWithSuffix[i]!;
+        const link2 = testLinksWithSuffix[i + 1]!;
+        const link3 = testLinksWithSuffix[i + 2]!;
         const line = ` ${link1.link} ${link2.link} ${link3.link} `;
         test("`" + line.replaceAll("\u00A0", "<nbsp>") + "`", () => {
           strictEqual(detectLinks(line, OperatingSystem.Linux).length, 3);
