@@ -317,10 +317,36 @@ pub fn detect_links(line: &str, os: OperatingSystem) -> Vec<ParsedLink> {
     // 1: Detect all links on line via suffixes first
     let mut results = detect_links_via_suffix(line);
 
+    // Create a set of ranges that have already been matched
+    let matched_ranges: Vec<(usize, usize)> = results
+        .iter()
+        .map(|link| {
+            let start = link.path.index;
+            let end = start + link.path.text.len();
+            (start, end)
+        })
+        .collect();
+
     // 2: Detect all links without suffixes and merge non-conflicting ranges into the results
     let no_suffix_paths = detect_paths_no_suffix(line, os);
-    binary_insert_list(&mut results, no_suffix_paths);
 
+    // Filter out paths that overlap with already matched ranges
+    let filtered_paths: Vec<ParsedLink> = no_suffix_paths
+        .into_iter()
+        .filter(|link| {
+            let start = link.path.index;
+            let end = start + link.path.text.len();
+
+            // Check if this range overlaps with any already matched range
+            !matched_ranges.iter().any(|(matched_start, matched_end)| {
+                (start >= *matched_start && start < *matched_end) || // start is within a matched range
+                (end > *matched_start && end <= *matched_end) || // end is within a matched range
+                (start <= *matched_start && end >= *matched_end) // this range completely contains a matched range
+            })
+        })
+        .collect();
+
+    binary_insert_list(&mut results, filtered_paths);
     results
 }
 
@@ -350,7 +376,7 @@ fn binary_insert(list: &mut Vec<ParsedLink>, new_item: ParsedLink, low: usize, h
         }
         return;
     }
-    
+
     let mid = (low + high) / 2;
     if new_item.path.index > list[mid].path.index {
         binary_insert(list, new_item, mid + 1, high);
