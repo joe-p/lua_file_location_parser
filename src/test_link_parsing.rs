@@ -1515,107 +1515,142 @@ mod link_parsing_tests {
             let line = format!(" {} {} {} ", link1.link, link2.link, link3.link);
             let results = detect_links(&line, OperatingSystem::Linux);
 
-            // Calculate start indices for each link
-            let idx1 = 1;
-            let idx2 = idx1 + link1.link.len() + 1;
-            let idx3 = idx2 + link2.link.len() + 1;
+            let detected_link_1 = crate::ParsedLink {
+                prefix: link1.prefix.map(|p| LinkPartialRange {
+                    index: 1,
+                    text: p.to_string(),
+                }),
+                path: LinkPartialRange {
+                    index: 1 + (link1.prefix.map_or(0, |p| p.len())),
+                    text: link1
+                        .link
+                        .replace(link1.suffix.unwrap(), "")
+                        .replace(link1.prefix.unwrap_or(""), ""),
+                },
+                suffix: Some(LinkSuffix {
+                    row: if link1.has_row { Some(TEST_ROW) } else { None },
+                    col: if link1.has_col { Some(TEST_COL) } else { None },
+                    row_end: if link1.has_row_end {
+                        Some(TEST_ROW_END)
+                    } else {
+                        None
+                    },
+                    col_end: if link1.has_col_end {
+                        Some(TEST_COL_END)
+                    } else {
+                        None
+                    },
+                    suffix: LinkPartialRange {
+                        index: 1 + (link1.link.len() - link1.suffix.unwrap().len()),
+                        text: link1.suffix.unwrap().to_string(),
+                    },
+                }),
+            };
 
-            let expected = vec![
-                crate::ParsedLink {
-                    prefix: link1.prefix.map(|p| LinkPartialRange {
-                        index: idx1,
-                        text: p.to_string(),
-                    }),
-                    path: LinkPartialRange {
-                        index: idx1 + (link1.prefix.map_or(0, |p| p.len())),
-                        text: link1
-                            .link
-                            .replace(link1.suffix.unwrap(), "")
-                            .replace(link1.prefix.unwrap_or(""), ""),
-                    },
-                    suffix: Some(LinkSuffix {
-                        row: if link1.has_row { Some(TEST_ROW) } else { None },
-                        col: if link1.has_col { Some(TEST_COL) } else { None },
-                        row_end: if link1.has_row_end {
-                            Some(TEST_ROW_END)
-                        } else {
-                            None
-                        },
-                        col_end: if link1.has_col_end {
-                            Some(TEST_COL_END)
-                        } else {
-                            None
-                        },
-                        suffix: LinkPartialRange {
-                            index: idx1 + (link1.link.len() - link1.suffix.unwrap().len()),
-                            text: link1.suffix.unwrap().to_string(),
-                        },
-                    }),
-                },
-                crate::ParsedLink {
-                    prefix: link2.prefix.map(|p| LinkPartialRange {
-                        index: idx2,
-                        text: p.to_string(),
-                    }),
-                    path: LinkPartialRange {
-                        index: idx2 + (link2.prefix.map_or(0, |p| p.len())),
-                        text: link2
-                            .link
-                            .replace(link2.suffix.unwrap(), "")
-                            .replace(link2.prefix.unwrap_or(""), ""),
-                    },
-                    suffix: Some(LinkSuffix {
-                        row: if link2.has_row { Some(TEST_ROW) } else { None },
-                        col: if link2.has_col { Some(TEST_COL) } else { None },
-                        row_end: if link2.has_row_end {
-                            Some(TEST_ROW_END)
-                        } else {
-                            None
-                        },
-                        col_end: if link2.has_col_end {
-                            Some(TEST_COL_END)
-                        } else {
-                            None
-                        },
-                        suffix: LinkPartialRange {
-                            index: idx2 + (link2.link.len() - link2.suffix.unwrap().len()),
-                            text: link2.suffix.unwrap().to_string(),
-                        },
-                    }),
-                },
-                crate::ParsedLink {
-                    prefix: link3.prefix.map(|p| LinkPartialRange {
-                        index: idx3,
-                        text: p.to_string(),
-                    }),
-                    path: LinkPartialRange {
-                        index: idx3 + (link3.prefix.map_or(0, |p| p.len())),
-                        text: link3
-                            .link
-                            .replace(link3.suffix.unwrap(), "")
-                            .replace(link3.prefix.unwrap_or(""), ""),
-                    },
-                    suffix: Some(LinkSuffix {
-                        row: if link3.has_row { Some(TEST_ROW) } else { None },
-                        col: if link3.has_col { Some(TEST_COL) } else { None },
-                        row_end: if link3.has_row_end {
-                            Some(TEST_ROW_END)
-                        } else {
-                            None
-                        },
-                        col_end: if link3.has_col_end {
-                            Some(TEST_COL_END)
-                        } else {
-                            None
-                        },
-                        suffix: LinkPartialRange {
-                            index: idx3 + (link3.link.len() - link3.suffix.unwrap().len()),
-                            text: link3.suffix.unwrap().to_string(),
-                        },
-                    }),
-                },
-            ];
+            let detected_link_2 = crate::ParsedLink {
+                prefix: link2.prefix.map(|p| LinkPartialRange {
+                    index: detected_link_1
+                        .prefix
+                        .clone()
+                        .map_or(detected_link_1.path.index, |prefix| prefix.index)
+                        + link1.link.len(),
 
+                    text: p.to_string(),
+                }),
+                path: LinkPartialRange {
+                    index: detected_link_1
+                        .prefix
+                        .clone()
+                        .map_or(detected_link_1.path.index, |prefix| prefix.index)
+                        + link1.link.len()
+                        + 1
+                        + link2.prefix.unwrap_or("").len(),
+
+                    text: link2
+                        .link
+                        .replace(link2.suffix.unwrap(), "")
+                        .replace(link2.prefix.unwrap_or(""), ""),
+                },
+                suffix: Some(LinkSuffix {
+                    row: if link2.has_row { Some(TEST_ROW) } else { None },
+                    col: if link2.has_col { Some(TEST_COL) } else { None },
+                    row_end: if link2.has_row_end {
+                        Some(TEST_ROW_END)
+                    } else {
+                        None
+                    },
+                    col_end: if link2.has_col_end {
+                        Some(TEST_COL_END)
+                    } else {
+                        None
+                    },
+                    suffix: LinkPartialRange {
+                        index: detected_link_1
+                            .prefix
+                            .clone()
+                            .map_or(detected_link_1.path.index, |prefix| prefix.index)
+                            + link1.link.len()
+                            + 1
+                            + (link2.link.len() - link2.suffix.unwrap().len()),
+                        text: link2.suffix.unwrap().to_string(),
+                    },
+                }),
+            };
+
+            let detected_link_3 = crate::ParsedLink {
+                prefix: link3.prefix.map(|p| LinkPartialRange {
+                    index: detected_link_2
+                        .prefix
+                        .clone()
+                        .map_or(detected_link_2.path.index, |prefix| prefix.index)
+                        + link2.link.len()
+                        + 1
+                        + (link3.link.len() - link3.suffix.unwrap().len()),
+                    text: p.to_string(),
+                }),
+                path: LinkPartialRange {
+                    index: detected_link_2
+                        .prefix
+                        .clone()
+                        .map_or(detected_link_2.path.index, |prefix| prefix.index)
+                        + link2.link.len()
+                        + 1
+                        + (link3.link.len() - link3.suffix.unwrap().len()),
+                    text: link3
+                        .link
+                        .replace(link3.suffix.unwrap(), "")
+                        .replace(link3.prefix.unwrap_or(""), ""),
+                },
+                suffix: Some(LinkSuffix {
+                    row: if link3.has_row { Some(TEST_ROW) } else { None },
+                    col: if link3.has_col { Some(TEST_COL) } else { None },
+                    row_end: if link3.has_row_end {
+                        Some(TEST_ROW_END)
+                    } else {
+                        None
+                    },
+                    col_end: if link3.has_col_end {
+                        Some(TEST_COL_END)
+                    } else {
+                        None
+                    },
+                    suffix: LinkPartialRange {
+                        index: detected_link_2
+                            .prefix
+                            .clone()
+                            .map_or(detected_link_2.path.index, |prefix| prefix.index)
+                            + link2.link.len()
+                            + 1
+                            + (link3.link.len() - link3.suffix.unwrap().len()),
+                        text: link3.suffix.unwrap().to_string(),
+                    },
+                }),
+            };
+
+            let expected = vec![detected_link_1, detected_link_2, detected_link_3];
+
+            println!("line: {}", line);
+            println!("results: {:#?}", results);
             assert_eq!(results, expected);
         }
     }
