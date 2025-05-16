@@ -1515,14 +1515,19 @@ mod link_parsing_tests {
             let line = format!(" {} {} {} ", link1.link, link2.link, link3.link);
             let results = detect_links(&line, OperatingSystem::Linux);
 
+            // Calculate start indices for each link
+            let idx1 = 1;
+            let idx2 = idx1 + link1.link.len() + 1;
+            let idx3 = idx2 + link2.link.len() + 1;
+
             let expected = vec![
                 crate::ParsedLink {
                     prefix: link1.prefix.map(|p| LinkPartialRange {
-                        index: 1,
+                        index: idx1,
                         text: p.to_string(),
                     }),
                     path: LinkPartialRange {
-                        index: 1 + (link1.prefix.map_or(0, |p| p.len())),
+                        index: idx1 + (link1.prefix.map_or(0, |p| p.len())),
                         text: link1
                             .link
                             .replace(link1.suffix.unwrap(), "")
@@ -1542,20 +1547,18 @@ mod link_parsing_tests {
                             None
                         },
                         suffix: LinkPartialRange {
-                            index: 1 + (link1.link.len() - link1.suffix.unwrap().len()),
+                            index: idx1 + (link1.link.len() - link1.suffix.unwrap().len()),
                             text: link1.suffix.unwrap().to_string(),
                         },
                     }),
                 },
                 crate::ParsedLink {
                     prefix: link2.prefix.map(|p| LinkPartialRange {
-                        index: (link1.link.len() + 2) + (link1.prefix.map_or(0, |p| p.len())),
+                        index: idx2,
                         text: p.to_string(),
                     }),
                     path: LinkPartialRange {
-                        index: (link1.link.len() + 2)
-                            + (link1.prefix.map_or(0, |p| p.len()))
-                            + (link2.prefix.map_or(0, |p| p.len())),
+                        index: idx2 + (link2.prefix.map_or(0, |p| p.len())),
                         text: link2
                             .link
                             .replace(link2.suffix.unwrap(), "")
@@ -1575,23 +1578,18 @@ mod link_parsing_tests {
                             None
                         },
                         suffix: LinkPartialRange {
-                            index: (link1.link.len() + 2)
-                                + (link1.prefix.map_or(0, |p| p.len()))
-                                + (link2.link.len() - link2.suffix.unwrap().len()),
+                            index: idx2 + (link2.link.len() - link2.suffix.unwrap().len()),
                             text: link2.suffix.unwrap().to_string(),
                         },
                     }),
                 },
                 crate::ParsedLink {
                     prefix: link3.prefix.map(|p| LinkPartialRange {
-                        index: (link1.link.len() + link2.link.len() + 3)
-                            + (link1.prefix.map_or(0, |p| p.len())),
+                        index: idx3,
                         text: p.to_string(),
                     }),
                     path: LinkPartialRange {
-                        index: (link1.link.len() + link2.link.len() + 3)
-                            + (link1.prefix.map_or(0, |p| p.len()))
-                            + (link3.prefix.map_or(0, |p| p.len())),
+                        index: idx3 + (link3.prefix.map_or(0, |p| p.len())),
                         text: link3
                             .link
                             .replace(link3.suffix.unwrap(), "")
@@ -1611,9 +1609,7 @@ mod link_parsing_tests {
                             None
                         },
                         suffix: LinkPartialRange {
-                            index: (link1.link.len() + link2.link.len() + 3)
-                                + (link1.prefix.map_or(0, |p| p.len()))
-                                + (link3.link.len() - link3.suffix.unwrap().len()),
+                            index: idx3 + (link3.link.len() - link3.suffix.unwrap().len()),
                             text: link3.suffix.unwrap().to_string(),
                         },
                     }),
