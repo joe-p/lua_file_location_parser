@@ -4,7 +4,6 @@
 //! It is a port of the MIT-licensed code in VSCode found [here](https://github.com/microsoft/vscode/blob/22ee791ce8629104cf784cd7b96027b8abb98aa1/src/vs/workbench/contrib/terminalContrib/links/browser/terminalLinkParsing.ts)
 
 use fancy_regex::Regex;
-use nvim_oxi::api::opts::NotifyOpts;
 use nvim_oxi::conversion::{Error as ConversionError, ToObject};
 use nvim_oxi::serde::Serializer;
 use nvim_oxi::{Object, lua};
@@ -289,7 +288,7 @@ enum RegexPathConstants {
 impl RegexPathConstants {
     fn value(&self) -> &'static str {
         match self {
-            Self::PathPrefix => r"(?:\.\.?|~|file:///)",
+            Self::PathPrefix => r"(?:\.\.?|~|file://)",
             Self::PathSeparatorClause => r"/",
             // '":; are allowed in paths but they are often separators so ignore them
             // Also disallow \\ to prevent a catastrophic backtracking case #24795
