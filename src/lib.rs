@@ -4,6 +4,7 @@
 //! It is a port of the MIT-licensed code in VSCode found [here](https://github.com/microsoft/vscode/blob/22ee791ce8629104cf784cd7b96027b8abb98aa1/src/vs/workbench/contrib/terminalContrib/links/browser/terminalLinkParsing.ts)
 
 use fancy_regex::Regex;
+use nvim_oxi::api::opts::NotifyOpts;
 use nvim_oxi::conversion::{Error as ConversionError, ToObject};
 use nvim_oxi::serde::Serializer;
 use nvim_oxi::{Object, lua};
@@ -32,7 +33,7 @@ pub struct LinkSuffix {
     pub suffix: LinkPartialRange,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 pub struct ParsedLink {
     pub path: LinkPartialRange,
     pub prefix: Option<LinkPartialRange>,
@@ -531,6 +532,32 @@ fn detect_paths_no_suffix(line: &str, os: OperatingSystem) -> Vec<ParsedLink> {
     results
 }
 
+pub fn get_link_at_position_in_line(
+    line: &str,
+    position: usize,
+    os: OperatingSystem,
+) -> Option<ParsedLink> {
+    let links = detect_links(line, os);
+
+    links
+        .iter()
+        .find(|l| {
+            let start = l
+                .prefix
+                .as_ref()
+                .map_or(l.path.index, |prefix| prefix.index);
+            let len = l.path.text.len()
+                + l.suffix
+                    .as_ref()
+                    .map_or(0, |suffix| suffix.suffix.text.len())
+                + l.prefix.as_ref().map_or(0, |prefix| prefix.text.len());
+            let end = start + len;
+
+            position >= start && position <= end
+        })
+        .cloned()
+}
+
 #[nvim_oxi::plugin]
 pub fn fetch_rs() -> nvim_oxi::Dictionary {
     let os = if cfg!(windows) {
@@ -541,13 +568,23 @@ pub fn fetch_rs() -> nvim_oxi::Dictionary {
         OperatingSystem::Linux
     };
 
+    let get_link_at_position_in_line = nvim_oxi::Function::from_fn(move |args: (String, usize)| {
+        get_link_at_position_in_line(&args.0, args.1, os)
+    });
+
     let get_links_from_line =
         nvim_oxi::Function::from_fn(move |line: String| detect_links(&line, os));
 
-    nvim_oxi::Dictionary::from_iter([(
-        "get_links_from_line",
-        nvim_oxi::Object::from(get_links_from_line),
-    )])
+    nvim_oxi::Dictionary::from_iter([
+        (
+            "get_links_from_line",
+            nvim_oxi::Object::from(get_links_from_line),
+        ),
+        (
+            "get_link_at_position_in_line",
+            nvim_oxi::Object::from(get_link_at_position_in_line),
+        ),
+    ])
 }
 
 #[cfg(test)]
