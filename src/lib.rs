@@ -339,30 +339,23 @@ fn binary_insert(list: &mut Vec<ParsedLink>, new_item: ParsedLink, low: usize, h
         list.push(new_item);
         return;
     }
-    if low > high {
-        return;
-    }
-    // Find the index where the newItem would be inserted
-    let mid = (low + high) / 2;
-    if mid >= list.len()
-        || (new_item.path.index < list[mid].path.index
-            && (mid == 0 || new_item.path.index > list[mid - 1].path.index))
-    {
-        // Check if it conflicts with an existing link before adding
-        if mid >= list.len()
-            || (new_item.path.index + new_item.path.text.len() < list[mid].path.index
-                && (mid == 0
-                    || new_item.path.index
-                        > list[mid - 1].path.index + list[mid - 1].path.text.len()))
-        {
-            list.insert(mid, new_item);
+    if low >= high {
+        // Insert at the appropriate position
+        if low < list.len() && new_item.path.index < list[low].path.index {
+            list.insert(low, new_item);
+        } else if low < list.len() {
+            list.insert(low + 1, new_item);
+        } else {
+            list.push(new_item);
         }
         return;
     }
+    
+    let mid = (low + high) / 2;
     if new_item.path.index > list[mid].path.index {
         binary_insert(list, new_item, mid + 1, high);
     } else {
-        binary_insert(list, new_item, low, mid.saturating_sub(1));
+        binary_insert(list, new_item, low, mid);
     }
 }
 
