@@ -4,22 +4,26 @@
 //! It is a port of the MIT-licensed code in VSCode found [here](https://github.com/microsoft/vscode/blob/22ee791ce8629104cf784cd7b96027b8abb98aa1/src/vs/workbench/contrib/terminalContrib/links/browser/terminalLinkParsing.ts)
 
 use fancy_regex::Regex;
+use nvim_oxi::conversion::{Error as ConversionError, ToObject};
+use nvim_oxi::serde::Serializer;
+use nvim_oxi::{Object, lua};
 use once_cell::sync::Lazy;
+use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum OperatingSystem {
     Windows,
     Linux,
     Macintosh,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct LinkPartialRange {
     pub index: usize,
     pub text: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct LinkSuffix {
     pub row: Option<u32>,
     pub col: Option<u32>,
@@ -28,11 +32,27 @@ pub struct LinkSuffix {
     pub suffix: LinkPartialRange,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct ParsedLink {
     pub path: LinkPartialRange,
     pub prefix: Option<LinkPartialRange>,
     pub suffix: Option<LinkSuffix>,
+}
+
+impl ToObject for ParsedLink {
+    fn to_object(self) -> Result<Object, ConversionError> {
+        self.serialize(Serializer::new()).map_err(Into::into)
+    }
+}
+
+impl lua::Pushable for ParsedLink {
+    unsafe fn push(self, lstate: *mut lua::ffi::lua_State) -> Result<std::ffi::c_int, lua::Error> {
+        unsafe {
+            self.to_object()
+                .map_err(lua::Error::push_error_from_err::<Self, _>)?
+                .push(lstate)
+        }
+    }
 }
 
 /// A regex that extracts the link suffix which contains line and column information. The link suffix
@@ -509,6 +529,25 @@ fn detect_paths_no_suffix(line: &str, os: OperatingSystem) -> Vec<ParsedLink> {
     }
 
     results
+}
+
+#[nvim_oxi::plugin]
+pub fn fetch_rs() -> nvim_oxi::Dictionary {
+    let os = if cfg!(windows) {
+        OperatingSystem::Windows
+    } else if cfg!(target_os = "macos") {
+        OperatingSystem::Macintosh
+    } else {
+        OperatingSystem::Linux
+    };
+
+    let get_links_from_line =
+        nvim_oxi::Function::from_fn(move |line: String| detect_links(&line, os));
+
+    nvim_oxi::Dictionary::from_iter([(
+        "get_links_from_line",
+        nvim_oxi::Object::from(get_links_from_line),
+    )])
 }
 
 #[cfg(test)]
